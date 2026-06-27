@@ -1,0 +1,45 @@
+name: Quarkus CI Pipeline
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main", "develop"]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-24.04
+
+    steps:
+      # 1. Récupération du code source
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Configuration du JDK (Quarkus tourne parfaitement sur Java 21)
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      # 3. Validation et mise en cache automatique de Gradle (Gagnant de temps fou)
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      # 4. Étape de vérification du formatage (Optionnel mais recommandé pour un code propre)
+      # Si tu utilises un plugin comme Spotless, décommente la ligne suivante :
+      # - name: Check Code Format
+      #   run: ./gradlew spotlessCheck
+
+      # 5. Compilation du projet et exécution des tests (Unitaires + Intégration)
+      - name: Run Tests with Gradle
+        env:
+          # On passe les variables nécessaires ou des valeurs par défaut pour l'environnement de test
+          CLE_SECRET: "ma_cle_secrete_de_test_exactement_32_carac"
+        run: ./gradlew check test
+
+      # 6. Génération du rapport de build Quarkus (Vérifie que le packaging passe)
+      - name: Build Quarkus Application
+        env:
+          CLE_SECRET: "ma_cle_secrete_de_test_exactement_32_carac"
+        run: ./gradlew build -x test

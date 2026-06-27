@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id 'io.quarkus'
+    id 'eclipse'
 }
 
 repositories {
@@ -9,10 +10,40 @@ repositories {
 }
 
 dependencies {
+
     implementation enforcedPlatform("${quarkusPlatformGroupId}:${quarkusPlatformArtifactId}:${quarkusPlatformVersion}")
-    implementation 'io.quarkus:quarkus-rest'
+
+    testImplementation 'io.quarkus:quarkus-junit5-mockito:3.9.4'
+    testImplementation 'org.mockito:mockito-core:5.11.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.11.0'
+
+    implementation 'io.quarkus:quarkus-smallrye-jwt'
+    implementation 'io.quarkus:quarkus-smallrye-jwt-build'
+
+    implementation 'io.quarkus:quarkus-elytron-security-properties-file'
+
+    implementation 'io.quarkus:quarkus-smallrye-openapi'
+
+    implementation 'io.quarkus:quarkus-rest-jackson'
+
+    testImplementation 'io.quarkus:quarkus-test-security'
+
+    // Core
     implementation 'io.quarkus:quarkus-arc'
-    testImplementation 'io.quarkus:quarkus-junit'
+    implementation 'io.quarkus:quarkus-rest'
+
+    // ORM — choose ONE of the two blocks below:
+
+    // Option A: Standard (blocking) Panache
+    implementation 'io.quarkus:quarkus-hibernate-orm-panache'
+    implementation 'io.quarkus:quarkus-jdbc-postgresql'   // or h2, mysql, etc.
+
+    // Option B: Reactive Panache (comment out Option A if using this)
+    // implementation 'io.quarkus:quarkus-hibernate-reactive-panache'
+    // implementation 'io.quarkus:quarkus-reactive-pg-client'
+
+    // Test
+    testImplementation 'io.quarkus:quarkus-junit5'
     testImplementation 'io.rest-assured:rest-assured'
 }
 

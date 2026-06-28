@@ -1,12 +1,16 @@
 package org.acme.Controller;
 
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import org.acme.DTO.AuthRequestDTO;
 import org.acme.DTO.AuthResponseDTO;
 import org.acme.Service.SellerService;
@@ -84,6 +88,24 @@ public class AuthController {
         return Response.ok(responseDTO).cookie(jwtCookie).build();
     }
 
+    @GET
+    @Path("/me")
+    @RolesAllowed({ "SELLER", "ADMIN" })
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(
+        summary = "Vérifier la session active",
+        description = "Retourne les infos du vendeur connecté si le JWT est valide"
+    )
+    @APIResponse(responseCode = "200", description = "Session valide")
+    @APIResponse(responseCode = "401", description = "Non authentifié")
+    public Response me(@Context SecurityContext ctx) {
+        String emailFromToken = ctx.getUserPrincipal().getName();
+        AuthResponseDTO responseDTO = sellerService.getSellerByEmail(
+            emailFromToken
+        );
+        return Response.ok(responseDTO).build();
+    }
+
     @POST
     @Path("/logout")
     @Operation(
@@ -92,16 +114,7 @@ public class AuthController {
     )
     @APIResponse(responseCode = "200", description = "Déconnexion réussie")
     public Response logout() {
-        NewCookie expiredCookie = new NewCookie.Builder("jwt")
-            .value("")
-            .path("/")
-            .maxAge(0)
-            .secure(true)
-            .httpOnly(true)
-            .sameSite(NewCookie.SameSite.STRICT)
-            .build();
-
-        return Response.ok().cookie(expiredCookie).build();
+        return Response.ok().cookie(buildExpiredJwtCookie()).build();
     }
 
     private NewCookie buildJwtCookie(String token) {
@@ -110,7 +123,18 @@ public class AuthController {
             .path("/")
             .maxAge(3600)
             .secure(false)
-            .httpOnly(false)
+            .httpOnly(true)
+            .sameSite(NewCookie.SameSite.STRICT)
+            .build();
+    }
+
+    private NewCookie buildExpiredJwtCookie() {
+        return new NewCookie.Builder("jwt")
+            .value("")
+            .path("/")
+            .maxAge(0)
+            .secure(false)
+            .httpOnly(true)
             .sameSite(NewCookie.SameSite.STRICT)
             .build();
     }

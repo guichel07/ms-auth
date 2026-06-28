@@ -44,6 +44,27 @@ public class SellerServiceIpml implements SellerService {
     }
 
     @Override
+    public AuthResponseDTO getSellerByEmail(String email) {
+        SellerEntity sellerEntity = sellerRepository.findByEmail(email);
+
+        if (sellerEntity == null) {
+            throw new BusinessException(
+                Response.Status.NOT_FOUND,
+                "Seller not found"
+            );
+        }
+
+        return new AuthResponseDTO(
+            sellerEntity.getEmail(),
+            sellerEntity.getName(),
+            sellerEntity.getTag(),
+            sellerEntity.getRole(),
+            sellerEntity.getSvgAvatar(),
+            sellerEntity.getContact()
+        );
+    }
+
+    @Override
     public ArrayList<AuthResponseDTO> getAllSellers() {
         return sellerRepository
             .listAll()

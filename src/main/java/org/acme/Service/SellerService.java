@@ -22,5 +22,7 @@ public interface SellerService {
         String emailFromToken
     );
 
+    AuthResponseDTO getSellerByEmail(String email);
+
     void deleteSellerId(Long id);
 }

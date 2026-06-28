@@ -14,7 +14,6 @@ public class CorsFilter implements ContainerResponseFilter {
         ContainerRequestContext requestContext,
         ContainerResponseContext responseContext
     ) throws IOException {
-        // On force les headers indispensables pour ton serveur Vite
         responseContext
             .getHeaders()
             .add("Access-Control-Allow-Origin", "http://localhost:5173");
@@ -34,7 +33,6 @@ public class CorsFilter implements ContainerResponseFilter {
                 "GET, POST, PUT, DELETE, OPTIONS, HEAD"
             );
 
-        // Si le navigateur fait son Preflight (OPTIONS), on lui répond direct 200 OK
         if ("OPTIONS".equalsIgnoreCase(requestContext.getMethod())) {
             responseContext.setStatus(200);
         }

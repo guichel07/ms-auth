@@ -49,14 +49,11 @@ public class AuthController {
         AuthResponseDTO responseDTO = sellerService.registerSeller(
             authRequestDTO
         );
-
         String token = tokenService.generateEncryptedToken(
             responseDTO.getEmail(),
             responseDTO.getRole()
         );
-
         NewCookie jwtCookie = buildJwtCookie(token);
-
         return Response.status(Response.Status.CREATED)
             .entity(responseDTO)
             .cookie(jwtCookie)
@@ -77,14 +74,11 @@ public class AuthController {
         AuthResponseDTO responseDTO = sellerService.loginWithEmail(
             authRequestDTO
         );
-
         String token = tokenService.generateEncryptedToken(
             responseDTO.getEmail(),
             responseDTO.getRole()
         );
-
         NewCookie jwtCookie = buildJwtCookie(token);
-
         return Response.ok(responseDTO).cookie(jwtCookie).build();
     }
 
@@ -124,7 +118,7 @@ public class AuthController {
             .maxAge(3600)
             .secure(false)
             .httpOnly(true)
-            .sameSite(NewCookie.SameSite.STRICT)
+            .sameSite(NewCookie.SameSite.LAX)
             .build();
     }
 
@@ -135,7 +129,7 @@ public class AuthController {
             .maxAge(0)
             .secure(false)
             .httpOnly(true)
-            .sameSite(NewCookie.SameSite.STRICT)
+            .sameSite(NewCookie.SameSite.LAX)
             .build();
     }
 }

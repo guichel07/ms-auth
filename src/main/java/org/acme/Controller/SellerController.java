@@ -32,7 +32,7 @@ public class SellerController {
 
     @GET
     @Path("/{id}")
-    @RolesAllowed({ "SELLER", "ADMIN" })
+    @RolesAllowed({ "ADMIN" })
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Récupérer un vendeur par ID")
     @APIResponse(responseCode = "200", description = "Vendeur trouvé")
@@ -43,7 +43,7 @@ public class SellerController {
     }
 
     @GET
-    @RolesAllowed("ADMIN")
+    @RolesAllowed({ "ADMIN" })
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Récupérer tous les vendeurs")
     @APIResponse(
@@ -57,7 +57,7 @@ public class SellerController {
 
     @PUT
     @Path("/{id}")
-    @RolesAllowed("SELLER")
+    @RolesAllowed({ "ADMIN" })
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Modifier son profil")
@@ -79,8 +79,8 @@ public class SellerController {
     }
 
     @DELETE
+    @RolesAllowed({ "ADMIN" })
     @Path("/{id}")
-    @RolesAllowed("ADMIN")
     @Operation(summary = "Supprimer un vendeur")
     @APIResponse(responseCode = "204", description = "Vendeur supprimé")
     @APIResponse(responseCode = "404", description = "Vendeur inexistant")

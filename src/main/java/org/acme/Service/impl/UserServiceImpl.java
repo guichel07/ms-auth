@@ -10,8 +10,10 @@ import java.util.List;
 import java.util.Optional;
 
 import org.acme.DTO.EmailLoginRequestDTO;
+import org.acme.DTO.UserCreateDTO;
 import org.acme.DTO.UserCredentialsDTO;
 import org.acme.DTO.UserDTO;
+import org.acme.DTO.UserUpdateDTO;
 import org.acme.Entity.UserEntity;
 import org.acme.Exception.BusinessException;
 import org.acme.Repository.UserRepository;
@@ -43,7 +45,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserDTO loginWithEmail(EmailLoginRequestDTO emailLoginRequestDTO) {
         UserEntity userEntity = userRepository.findByEmail(
-            emailLoginRequestDTO.email()
+            emailLoginRequestDTO.email().toLowerCase().trim()
         ).orElseThrow(() -> new BusinessException(
             Response.Status.UNAUTHORIZED,
             "User not found"
@@ -107,32 +109,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UserCredentialsDTO registerUser(UserDTO userDTO) {
-        if (userDTO.email() == null || userDTO.email().isBlank()) {
-            throw new BusinessException(
-                Response.Status.BAD_REQUEST,
-                "L'email est obligatoire"
-            );
-        }
-        if (!userDTO.email().matches("^[\\w.-]+@[\\w.-]+\\.[a-zA-Z]{2,}$")) {
-            throw new BusinessException(
-                Response.Status.BAD_REQUEST,
-                "L'email est invalide"
-            );
-        }
-        if (userDTO.name() == null || userDTO.name().isBlank()) {
-            throw new BusinessException(
-                Response.Status.BAD_REQUEST,
-                "Le nom est obligatoire"
-            );
-        }
-        if (userDTO.role() == null || userDTO.role().isBlank()) {
-            throw new BusinessException(
-                Response.Status.BAD_REQUEST,
-                "Le rôle est obligatoire"
-            );
-        }
-        if (userRepository.findByEmail(userDTO.email().toLowerCase()).isPresent()) {
+    public UserCredentialsDTO registerUser(UserCreateDTO userCreateDTO) {
+
+        if (userRepository.findByEmail(userCreateDTO.email().toLowerCase()).isPresent()) {
             throw new BusinessException(
                 Response.Status.CONFLICT,
                 "Cet email est déjà utilisé"
@@ -142,13 +121,13 @@ public class UserServiceImpl implements UserService {
         String generatedPassword = generateSecurePassword(5);
 
         UserEntity newUserEntity = new UserEntity();
-        newUserEntity.setEmail(userDTO.email().toLowerCase().trim());
-        newUserEntity.setName(userDTO.name().trim());
-        newUserEntity.setRole(userDTO.role());
+        newUserEntity.setEmail(userCreateDTO.email().toLowerCase().trim());
+        newUserEntity.setName(userCreateDTO.name().trim());
+        newUserEntity.setRole(userCreateDTO.role());
         newUserEntity.setPassword(BcryptUtil.bcryptHash(generatedPassword));
-        newUserEntity.setTag(generateTag(userDTO.name()));
-        newUserEntity.setSvgAvatar(generateDefaultAvatar(userDTO.name()));
-        newUserEntity.setContact(userDTO.contact());
+        newUserEntity.setTag(generateTag(userCreateDTO.name()));
+        newUserEntity.setSvgAvatar(generateDefaultAvatar(userCreateDTO.name()));
+        newUserEntity.setContact(userCreateDTO.contact());
         userRepository.persist(newUserEntity);
 
         return UserCredentialsDTO.of(generatedPassword, newUserEntity.getEmail(), newUserEntity.getRole());
@@ -187,7 +166,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UserDTO updateUser(UserDTO userDTO, String emailFromToken) {
+    public UserDTO updateUser(UserUpdateDTO userDTO, String emailFromToken) {
         UserEntity userEntity = userRepository.findByEmail(emailFromToken)
             .orElseThrow(() -> new BusinessException(
                 Response.Status.NOT_FOUND,

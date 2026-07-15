@@ -1,6 +1,7 @@
 package org.acme.Controller;
 
 import jakarta.annotation.security.RolesAllowed;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
@@ -17,6 +18,7 @@ import java.util.List;
 
 import org.acme.DTO.UserCredentialsDTO;
 import org.acme.DTO.UserDTO;
+import org.acme.DTO.UserUpdateDTO;
 import org.acme.Service.UserService;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
@@ -58,7 +60,6 @@ public class UserController {
     }
 
     @PUT
-    @Path("/{id}")
     @RolesAllowed({ "ADMIN" })
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
@@ -66,8 +67,8 @@ public class UserController {
     @APIResponse(responseCode = "200", description = "Profil mis à jour")
     @APIResponse(responseCode = "403", description = "Accès refusé")
     @APIResponse(responseCode = "404", description = "Vendeur inexistant")
-    public Response updateSeller(
-        UserDTO updatedUserDTO,
+    public Response updatedUser(
+        @Valid UserUpdateDTO updatedUserDTO,
         @Context SecurityContext ctx
     ) {
         String emailFromToken = ctx.getUserPrincipal().getName();
@@ -84,7 +85,7 @@ public class UserController {
     @Operation(summary = "Supprimer un vendeur")
     @APIResponse(responseCode = "204", description = "Vendeur supprimé")
     @APIResponse(responseCode = "404", description = "Vendeur inexistant")
-    public Response deleteSeller(@PathParam("id") Long id) {
+    public Response deleteUserId(@PathParam("id") Long id) {
         userService.deleteUserId(id);
         return Response.noContent().build();
     }

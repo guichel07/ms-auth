@@ -1,6 +1,7 @@
 package org.acme.Controller;
 
 import jakarta.annotation.security.RolesAllowed;
+import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -12,6 +13,7 @@ import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.acme.DTO.EmailLoginRequestDTO;
+import org.acme.DTO.UserCreateDTO;
 import org.acme.DTO.UserCredentialsDTO;
 import org.acme.DTO.UserDTO;
 import org.acme.Service.UserService;
@@ -45,7 +47,7 @@ public class AuthController {
     )
     @APIResponse(responseCode = "200", description = "Connexion réussie")
     @APIResponse(responseCode = "401", description = "Identifiants incorrects")
-    public Response login(EmailLoginRequestDTO emailLoginRequestDTO) {
+    public Response login(@Valid EmailLoginRequestDTO emailLoginRequestDTO) {
         UserDTO responseDTO = userService.loginWithEmail(
             emailLoginRequestDTO
         );
@@ -68,9 +70,9 @@ public class AuthController {
     @APIResponse(responseCode = "200", description = "Compte créé avec succès")
     @APIResponse(responseCode = "400", description = "Données invalides")
     @APIResponse(responseCode = "409", description = "Email déjà utilisé")
-    public Response register(UserDTO userDTO) {
+    public Response register(@Valid UserCreateDTO userCreateDTO) {
         UserCredentialsDTO responseDTO = userService.registerUser(
-            userDTO
+            userCreateDTO
         );
         String token = tokenService.generateEncryptedToken(
             responseDTO.email(),

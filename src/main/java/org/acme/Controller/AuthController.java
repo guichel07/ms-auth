@@ -11,9 +11,10 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
-import org.acme.DTO.AuthRequestDTO;
-import org.acme.DTO.AuthResponseDTO;
-import org.acme.Service.SellerService;
+import org.acme.DTO.EmailLoginRequestDTO;
+import org.acme.DTO.UserCredentialsDTO;
+import org.acme.DTO.UserDTO;
+import org.acme.Service.UserService;
 import org.acme.Service.TokenService;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
@@ -23,15 +24,37 @@ import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 @Tag(name = "Authentification", description = "Login et register")
 public class AuthController {
 
-    private final SellerService sellerService;
+    private final UserService userService;
     private final TokenService tokenService;
 
     public AuthController(
-        SellerService sellerService,
+        UserService sellerService,
         TokenService tokenService
     ) {
-        this.sellerService = sellerService;
+        this.userService = sellerService;
         this.tokenService = tokenService;
+    }
+
+    @POST
+    @Path("/login")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(
+        summary = "Se connecter",
+        description = "Authentifie un utilisateur par email et mot de passe"
+    )
+    @APIResponse(responseCode = "200", description = "Connexion réussie")
+    @APIResponse(responseCode = "401", description = "Identifiants incorrects")
+    public Response login(EmailLoginRequestDTO emailLoginRequestDTO) {
+        UserDTO responseDTO = userService.loginWithEmail(
+            emailLoginRequestDTO
+        );
+        String token = tokenService.generateEncryptedToken(
+            responseDTO.email(),
+            responseDTO.role()
+        );
+        NewCookie jwtCookie = buildJwtCookie(token);
+        return Response.ok(responseDTO).cookie(jwtCookie).build();
     }
 
     @POST
@@ -45,41 +68,19 @@ public class AuthController {
     @APIResponse(responseCode = "200", description = "Compte créé avec succès")
     @APIResponse(responseCode = "400", description = "Données invalides")
     @APIResponse(responseCode = "409", description = "Email déjà utilisé")
-    public Response register(AuthRequestDTO authRequestDTO) {
-        AuthResponseDTO responseDTO = sellerService.registerSeller(
-            authRequestDTO
+    public Response register(UserDTO userDTO) {
+        UserCredentialsDTO responseDTO = userService.registerUser(
+            userDTO
         );
         String token = tokenService.generateEncryptedToken(
-            responseDTO.getEmail(),
-            responseDTO.getRole()
+            responseDTO.email(),
+            responseDTO.role()
         );
         NewCookie jwtCookie = buildJwtCookie(token);
         return Response.status(Response.Status.CREATED)
             .entity(responseDTO)
             .cookie(jwtCookie)
             .build();
-    }
-
-    @POST
-    @Path("/login")
-    @Consumes(MediaType.APPLICATION_JSON)
-    @Produces(MediaType.APPLICATION_JSON)
-    @Operation(
-        summary = "Se connecter",
-        description = "Authentifie un vendeur par email et mot de passe"
-    )
-    @APIResponse(responseCode = "200", description = "Connexion réussie")
-    @APIResponse(responseCode = "401", description = "Identifiants incorrects")
-    public Response login(AuthRequestDTO authRequestDTO) {
-        AuthResponseDTO responseDTO = sellerService.loginWithEmail(
-            authRequestDTO
-        );
-        String token = tokenService.generateEncryptedToken(
-            responseDTO.getEmail(),
-            responseDTO.getRole()
-        );
-        NewCookie jwtCookie = buildJwtCookie(token);
-        return Response.ok(responseDTO).cookie(jwtCookie).build();
     }
 
     @GET
@@ -94,7 +95,7 @@ public class AuthController {
     @APIResponse(responseCode = "401", description = "Non authentifié")
     public Response me(@Context SecurityContext ctx) {
         String emailFromToken = ctx.getUserPrincipal().getName();
-        AuthResponseDTO responseDTO = sellerService.getSellerByEmail(
+        UserDTO responseDTO = userService.getUserByEmail(
             emailFromToken
         );
         return Response.ok(responseDTO).build();

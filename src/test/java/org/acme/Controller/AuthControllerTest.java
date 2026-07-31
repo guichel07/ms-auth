@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.nullValue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -39,12 +40,14 @@ class AuthControllerTest {
 
     private UserDTO buildUserDTO() {
         return new UserDTO(
+                1L,
                 "john.doe@example.com",
                 "John Doe",
                 "JOHN",
                 "SELLER",
                 null,
-                "0612345678"
+                "0612345678",
+                true
         );
     }
 
@@ -114,11 +117,10 @@ class AuthControllerTest {
     // ---------------------------------------------------------------
 
     @Test
-    void register_shouldReturn201AndSetJwtCookie_whenPayloadIsValid() {
+    @TestSecurity(user = "admin1", roles = { "ADMIN" })
+    void register_shouldReturn201_whenPayloadIsValid() {
         when(userService.registerUser(any(UserCreateDTO.class)))
                 .thenReturn(UserCredentialsDTO.of("Temp1234", "new.user@example.com", "SELLER"));
-        when(tokenService.generateEncryptedToken(anyString(), anyString()))
-                .thenReturn("fake-jwt-token");
 
         UserCreateDTO createDTO = new UserCreateDTO(
                 "new.user@example.com",
@@ -138,10 +140,52 @@ class AuthControllerTest {
                 .statusCode(201)
                 .body("email", equalTo("new.user@example.com"))
                 .body("temporaryPassword", equalTo("Temp1234"))
-                .cookie("jwt", "fake-jwt-token");
+                .header("Set-Cookie", nullValue());
     }
 
     @Test
+    void register_shouldReturn401_whenNoAuthentication() {
+        UserCreateDTO createDTO = new UserCreateDTO(
+                "new.user@example.com",
+                "New User",
+                null,
+                "SELLER",
+                null,
+                "0612345678"
+        );
+
+        given()
+                .contentType(ContentType.JSON)
+                .body(createDTO)
+                .when()
+                .post("/ms-auth/register")
+                .then()
+                .statusCode(401);
+    }
+
+    @Test
+    @TestSecurity(user = "seller1", roles = { "SELLER" })
+    void register_shouldReturn403_whenCallerIsSeller() {
+        UserCreateDTO createDTO = new UserCreateDTO(
+                "new.user@example.com",
+                "New User",
+                null,
+                "ADMIN",
+                null,
+                "0612345678"
+        );
+
+        given()
+                .contentType(ContentType.JSON)
+                .body(createDTO)
+                .when()
+                .post("/ms-auth/register")
+                .then()
+                .statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "admin1", roles = { "ADMIN" })
     void register_shouldReturn409_whenEmailAlreadyUsed() {
         when(userService.registerUser(any(UserCreateDTO.class)))
                 .thenThrow(new BusinessException(Response.Status.CONFLICT, "Cet email est déjà utilisé"));
@@ -165,6 +209,7 @@ class AuthControllerTest {
     }
 
     @Test
+    @TestSecurity(user = "admin1", roles = { "ADMIN" })
     void register_shouldReturn400_whenRoleIsInvalid() {
         UserCreateDTO createDTO = new UserCreateDTO(
                 "new.user@example.com",
@@ -185,6 +230,7 @@ class AuthControllerTest {
     }
 
     @Test
+    @TestSecurity(user = "admin1", roles = { "ADMIN" })
     void register_shouldReturn400_whenContactIsInvalid() {
         UserCreateDTO createDTO = new UserCreateDTO(
                 "new.user@example.com",

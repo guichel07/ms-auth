@@ -6,6 +6,7 @@ import io.quarkus.test.InjectMock;
 import io.quarkus.test.security.TestSecurity;
 import io.restassured.http.ContentType;
 import jakarta.ws.rs.core.Response;
+import org.acme.DTO.UserAdminUpdateDTO;
 import org.acme.DTO.UserCredentialsDTO;
 import org.acme.DTO.UserDTO;
 import org.acme.DTO.UserUpdateDTO;
@@ -39,12 +40,14 @@ class UserControllerTest {
 
     private UserDTO buildUserDTO() {
         return new UserDTO(
+                1L,
                 "john.doe@example.com",
                 "John Doe",
                 "JOHN",
                 "SELLER",
                 null,
-                "0612345678"
+                "0612345678",
+                true
         );
     }
 
@@ -133,12 +136,14 @@ class UserControllerTest {
     @TestSecurity(user = "admin@example.com", roles = { "ADMIN" })
     void updatedUser_shouldReturn200_whenCallerIsAdmin() {
         UserDTO updated = new UserDTO(
+                1L,
                 "john.doe@example.com",
                 "Johnny Doe",
                 "JOHN",
                 "SELLER",
                 null,
-                "0612345678"
+                "0612345678",
+                true
         );
         when(userService.updateUser(any(UserUpdateDTO.class), eq("admin@example.com")))
                 .thenReturn(updated);
@@ -181,6 +186,70 @@ class UserControllerTest {
                 .put("/ms-users")
                 .then()
                 .statusCode(400);
+    }
+
+    // ---------------------------------------------------------------
+    // PUT /ms-users/{id}
+    // ---------------------------------------------------------------
+
+    @Test
+    @TestSecurity(user = "admin@example.com", roles = { "ADMIN" })
+    void adminUpdateUser_shouldReturn200_whenCallerIsAdmin() {
+        UserDTO updated = new UserDTO(
+                2L,
+                "jane.doe@example.com",
+                "Jane Doe",
+                "JANE",
+                "ADMIN",
+                null,
+                "0612345678",
+                false
+        );
+        when(userService.adminUpdateUser(eq(2L), any(UserAdminUpdateDTO.class)))
+                .thenReturn(updated);
+
+        UserAdminUpdateDTO updateDTO = new UserAdminUpdateDTO("Jane Doe", "ADMIN", null, false);
+
+        given()
+                .contentType(ContentType.JSON)
+                .body(updateDTO)
+                .when()
+                .put("/ms-users/2")
+                .then()
+                .statusCode(200)
+                .body("name", equalTo("Jane Doe"))
+                .body("active", equalTo(false));
+    }
+
+    @Test
+    @TestSecurity(user = "seller@example.com", roles = { "SELLER" })
+    void adminUpdateUser_shouldReturn403_whenCallerIsNotAdmin() {
+        UserAdminUpdateDTO updateDTO = new UserAdminUpdateDTO("Jane Doe", null, null, null);
+
+        given()
+                .contentType(ContentType.JSON)
+                .body(updateDTO)
+                .when()
+                .put("/ms-users/2")
+                .then()
+                .statusCode(403);
+    }
+
+    @Test
+    @TestSecurity(user = "admin@example.com", roles = { "ADMIN" })
+    void adminUpdateUser_shouldReturn404_whenUserDoesNotExist() {
+        when(userService.adminUpdateUser(eq(99L), any(UserAdminUpdateDTO.class)))
+                .thenThrow(new BusinessException(Response.Status.NOT_FOUND, "Utilisateur non trouvé"));
+
+        UserAdminUpdateDTO updateDTO = new UserAdminUpdateDTO("Jane Doe", null, null, null);
+
+        given()
+                .contentType(ContentType.JSON)
+                .body(updateDTO)
+                .when()
+                .put("/ms-users/99")
+                .then()
+                .statusCode(404);
     }
 
     // ---------------------------------------------------------------

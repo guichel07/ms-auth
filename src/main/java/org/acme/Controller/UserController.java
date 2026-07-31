@@ -16,6 +16,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 
+import org.acme.DTO.UserAdminUpdateDTO;
 import org.acme.DTO.UserCredentialsDTO;
 import org.acme.DTO.UserDTO;
 import org.acme.DTO.UserUpdateDTO;
@@ -77,6 +78,19 @@ public class UserController {
             emailFromToken
         );
         return Response.ok(responseDTO).build();
+    }
+
+    @PUT
+    @Path("/{id}")
+    @RolesAllowed({ "ADMIN" })
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Modifier un autre utilisateur (nom, rôle, contact, statut actif)")
+    @APIResponse(responseCode = "200", description = "Utilisateur mis à jour")
+    @APIResponse(responseCode = "403", description = "Accès refusé")
+    @APIResponse(responseCode = "404", description = "Utilisateur inexistant")
+    public UserDTO adminUpdateUser(@PathParam("id") Long id, @Valid UserAdminUpdateDTO updatedUserDTO) {
+        return userService.adminUpdateUser(id, updatedUserDTO);
     }
 
     @DELETE

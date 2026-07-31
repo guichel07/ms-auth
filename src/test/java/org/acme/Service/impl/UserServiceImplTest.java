@@ -3,6 +3,7 @@ package org.acme.Service.impl;
 import io.quarkus.elytron.security.common.BcryptUtil;
 import jakarta.ws.rs.core.Response;
 import org.acme.DTO.EmailLoginRequestDTO;
+import org.acme.DTO.UserAdminUpdateDTO;
 import org.acme.DTO.UserCreateDTO;
 import org.acme.DTO.UserCredentialsDTO;
 import org.acme.DTO.UserDTO;
@@ -127,6 +128,31 @@ class UserServiceImplTest {
     }
 
     @Test
+    void loginWithEmail_shouldThrowForbidden_whenAccountIsDeactivated() {
+        UserEntity user = buildUser();
+        user.setActive(false);
+        when(userRepository.findByEmail("john.doe@example.com"))
+                .thenReturn(Optional.of(user));
+
+        EmailLoginRequestDTO request = new EmailLoginRequestDTO(
+                "john.doe@example.com",
+                "correct-password"
+        );
+
+        try (MockedStatic<BcryptUtil> bcrypt = Mockito.mockStatic(BcryptUtil.class)) {
+            bcrypt.when(() -> BcryptUtil.matches("correct-password", "hashed-password"))
+                    .thenReturn(true);
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> userService.loginWithEmail(request)
+            );
+
+            assertEquals(Response.Status.FORBIDDEN, exception.getErrorCode());
+        }
+    }
+
+    @Test
     void loginWithEmail_shouldNormalizeEmail_beforeLookup() {
         UserEntity user = buildUser();
         when(userRepository.findByEmail("john.doe@example.com"))
@@ -144,6 +170,59 @@ class UserServiceImplTest {
             userService.loginWithEmail(request);
 
             verify(userRepository).findByEmail("john.doe@example.com");
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // loginWithEmailByAdmin
+    // ---------------------------------------------------------------
+
+    @Test
+    void loginWithEmailByAdmin_shouldReturnUserDTO_whenCredentialsAreValidAndUserIsAdmin() {
+        UserEntity user = buildUser();
+        user.setRole("ADMIN");
+        when(userRepository.findByEmail("john.doe@example.com"))
+                .thenReturn(Optional.of(user));
+
+        EmailLoginRequestDTO request = new EmailLoginRequestDTO(
+                "john.doe@example.com",
+                "correct-password"
+        );
+
+        try (MockedStatic<BcryptUtil> bcrypt = Mockito.mockStatic(BcryptUtil.class)) {
+            bcrypt.when(() -> BcryptUtil.matches("correct-password", "hashed-password"))
+                    .thenReturn(true);
+
+            UserDTO result = userService.loginWithEmailByAdmin(request);
+
+            assertNotNull(result);
+            assertEquals("ADMIN", result.role());
+        }
+    }
+
+    @Test
+    void loginWithEmailByAdmin_shouldThrowForbidden_whenAccountIsDeactivated() {
+        UserEntity user = buildUser();
+        user.setRole("ADMIN");
+        user.setActive(false);
+        when(userRepository.findByEmail("john.doe@example.com"))
+                .thenReturn(Optional.of(user));
+
+        EmailLoginRequestDTO request = new EmailLoginRequestDTO(
+                "john.doe@example.com",
+                "correct-password"
+        );
+
+        try (MockedStatic<BcryptUtil> bcrypt = Mockito.mockStatic(BcryptUtil.class)) {
+            bcrypt.when(() -> BcryptUtil.matches("correct-password", "hashed-password"))
+                    .thenReturn(true);
+
+            BusinessException exception = assertThrows(
+                    BusinessException.class,
+                    () -> userService.loginWithEmailByAdmin(request)
+            );
+
+            assertEquals(Response.Status.FORBIDDEN, exception.getErrorCode());
         }
     }
 
@@ -384,6 +463,53 @@ class UserServiceImplTest {
         UserDTO result = userService.updateUser(updateDTO, "john.doe@example.com");
 
         assertEquals("JOHN", result.tag());
+    }
+
+    // ---------------------------------------------------------------
+    // adminUpdateUser
+    // ---------------------------------------------------------------
+
+    @Test
+    void adminUpdateUser_shouldThrowNotFound_whenUserDoesNotExist() {
+        when(userRepository.findById(99L)).thenReturn(null);
+
+        UserAdminUpdateDTO updateDTO = new UserAdminUpdateDTO("New Name", null, null, null);
+
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> userService.adminUpdateUser(99L, updateDTO)
+        );
+
+        assertEquals(Response.Status.NOT_FOUND, exception.getErrorCode());
+    }
+
+    @Test
+    void adminUpdateUser_shouldUpdateOnlyProvidedFields() {
+        UserEntity user = buildUser();
+        when(userRepository.findById(1L)).thenReturn(user);
+
+        UserAdminUpdateDTO updateDTO = new UserAdminUpdateDTO("Johnny Doe", "ADMIN", null, false);
+
+        UserDTO result = userService.adminUpdateUser(1L, updateDTO);
+
+        assertEquals("Johnny Doe", result.name());
+        assertEquals("ADMIN", result.role());
+        assertEquals(false, result.active());
+        // contact was not provided => stays unchanged
+        assertEquals("0612345678", result.contact());
+    }
+
+    @Test
+    void adminUpdateUser_shouldLeaveActiveUnchanged_whenNotProvided() {
+        UserEntity user = buildUser();
+        user.setActive(true);
+        when(userRepository.findById(1L)).thenReturn(user);
+
+        UserAdminUpdateDTO updateDTO = new UserAdminUpdateDTO(null, null, null, null);
+
+        UserDTO result = userService.adminUpdateUser(1L, updateDTO);
+
+        assertEquals(true, result.active());
     }
 
     // ---------------------------------------------------------------

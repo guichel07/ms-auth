@@ -36,6 +36,9 @@ public class UserEntity {
     @Column(nullable = false, unique = true)
     private String contact;
 
+    @Column(nullable = false)
+    private boolean active = true;
+
     public Long getId() {
         return id;
     }
@@ -98,5 +101,13 @@ public class UserEntity {
 
     public void setContact(String contact) {
         this.contact = contact;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
     }
 }

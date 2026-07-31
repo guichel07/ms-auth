@@ -12,6 +12,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.List;
 import org.acme.DTO.EmailLoginRequestDTO;
 import org.acme.DTO.UserCreateDTO;
 import org.acme.DTO.UserCredentialsDTO;
@@ -30,10 +31,10 @@ public class AuthController {
     private final TokenService tokenService;
 
     public AuthController(
-        UserService sellerService,
+        UserService userService,
         TokenService tokenService
     ) {
-        this.userService = sellerService;
+        this.userService = userService;
         this.tokenService = tokenService;
     }
 
@@ -60,29 +61,66 @@ public class AuthController {
     }
 
     @POST
-    @Path("/register")
+    @Path("/admin/login")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(
-        summary = "Créer un compte",
-        description = "Enregistre un nouveau vendeur"
+        summary = "Se connecter",
+        description = "Authentifie un utilisateur par email et mot de passe"
     )
-    @APIResponse(responseCode = "200", description = "Compte créé avec succès")
-    @APIResponse(responseCode = "400", description = "Données invalides")
-    @APIResponse(responseCode = "409", description = "Email déjà utilisé")
-    public Response register(@Valid UserCreateDTO userCreateDTO) {
-        UserCredentialsDTO responseDTO = userService.registerUser(
-            userCreateDTO
+    @APIResponse(responseCode = "200", description = "Connexion réussie")
+    @APIResponse(responseCode = "401", description = "Identifiants incorrects")
+    public Response loginByAdmin(@Valid EmailLoginRequestDTO emailLoginRequestDTO) {
+        UserDTO responseDTO = userService.loginWithEmailByAdmin(
+            emailLoginRequestDTO
         );
         String token = tokenService.generateEncryptedToken(
             responseDTO.email(),
             responseDTO.role()
         );
         NewCookie jwtCookie = buildJwtCookie(token);
+        return Response.ok(responseDTO).cookie(jwtCookie).build();
+    }
+
+    @POST
+    @Path("/register")
+    @RolesAllowed({ "ADMIN" })
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(
+        summary = "Créer un compte",
+        description = "Un admin crée un compte pour un nouvel utilisateur (vendeur ou admin) — jamais accessible sans authentification."
+    )
+    @APIResponse(responseCode = "201", description = "Compte créé avec succès")
+    @APIResponse(responseCode = "400", description = "Données invalides")
+    @APIResponse(responseCode = "403", description = "Accès refusé")
+    @APIResponse(responseCode = "409", description = "Email déjà utilisé")
+    public Response register(@Valid UserCreateDTO userCreateDTO) {
+        // Créé par un admin pour un tiers : pas de cookie JWT ici, ça écraserait la session de l'admin appelant.
+        UserCredentialsDTO responseDTO = userService.registerUser(
+            userCreateDTO
+        );
         return Response.status(Response.Status.CREATED)
             .entity(responseDTO)
-            .cookie(jwtCookie)
             .build();
+    }
+
+    @POST
+    @Path("/register/batch")
+    @RolesAllowed({ "ADMIN" })
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(
+        summary = "Créer plusieurs comptes",
+        description = "Enregistre plusieurs utilisateurs en une seule requête — réservé à un admin authentifié."
+    )
+    @APIResponse(responseCode = "201", description = "Comptes créés avec succès")
+    @APIResponse(responseCode = "400", description = "Données invalides")
+    @APIResponse(responseCode = "403", description = "Accès refusé")
+    @APIResponse(responseCode = "409", description = "Email déjà utilisé")
+    public Response registerAll(@Valid List<@Valid UserCreateDTO> usersCreateDTO) {
+        List<UserCredentialsDTO> created = userService.registerAllUsers(usersCreateDTO);
+        return Response.status(Response.Status.CREATED).entity(created).build();
     }
 
     @GET

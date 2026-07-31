@@ -7,9 +7,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Pattern;
 /**
- * SellerDTO
+ * UserDTO
  */
 public record UserDTO(
+
+    Long id,
 
     @NotBlank(message = "L'email est obligatoire")
     @Email(message = "L'email est invalide")
@@ -29,16 +31,20 @@ public record UserDTO(
 
     @NotBlank(message = "Le contact est obligatoire")
     @Pattern(regexp = "^0[1-9]\\d{8}$", message = "Le numéro de contact est invalide")
-    String contact
+    String contact,
+
+    boolean active
 ) {
     public static UserDTO fromEntity(UserEntity entity) {
         return new UserDTO(
+            entity.getId(),
             entity.getEmail(),
             entity.getName(),
             entity.getTag(),
             entity.getRole(),
             entity.getSvgAvatar(),
-            entity.getContact()
+            entity.getContact(),
+            entity.isActive()
         );
     }
 }

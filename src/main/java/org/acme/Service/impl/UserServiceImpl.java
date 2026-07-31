@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.acme.DTO.EmailLoginRequestDTO;
+import org.acme.DTO.UserAdminUpdateDTO;
 import org.acme.DTO.UserCreateDTO;
 import org.acme.DTO.UserCredentialsDTO;
 import org.acme.DTO.UserDTO;
@@ -60,6 +61,50 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(
                 Response.Status.UNAUTHORIZED,
                 "Bad password"
+            );
+        }
+
+        if (!userEntity.isActive()) {
+            throw new BusinessException(
+                Response.Status.FORBIDDEN,
+                "Compte désactivé"
+            );
+        }
+
+        return UserDTO.fromEntity(userEntity);
+    }
+
+    @Override
+    public UserDTO loginWithEmailByAdmin (EmailLoginRequestDTO emailLoginRequestDTO) {
+        UserEntity userEntity = userRepository.findByEmail(
+            emailLoginRequestDTO.email().toLowerCase().trim()
+        ).orElseThrow(() -> new BusinessException(
+            Response.Status.UNAUTHORIZED,
+            "Admin not found"
+        ));
+
+        if(!userEntity.getRole().equals("ADMIN")){
+            throw new BusinessException(
+                Response.Status.UNAUTHORIZED,
+                "Not Admin"
+            );
+        }
+        boolean passwordMatches = BcryptUtil.matches(
+            emailLoginRequestDTO.password(),
+            userEntity.getPassword()
+        );
+
+        if (!passwordMatches) {
+            throw new BusinessException(
+                Response.Status.UNAUTHORIZED,
+                "Bad password"
+            );
+        }
+
+        if (!userEntity.isActive()) {
+            throw new BusinessException(
+                Response.Status.FORBIDDEN,
+                "Compte désactivé"
             );
         }
 
@@ -133,6 +178,12 @@ public class UserServiceImpl implements UserService {
         return UserCredentialsDTO.of(generatedPassword, newUserEntity.getEmail(), newUserEntity.getRole());
     }
 
+    @Override
+    @Transactional
+    public List<UserCredentialsDTO> registerAllUsers(List<UserCreateDTO> usersCreateDTO) {
+        return usersCreateDTO.stream().map(this::registerUser).toList();
+    }
+
     private String generateTag(String name) {
         String base = name.replaceAll("\\s+", "").toUpperCase();
         base = base.length() >= 4 ? base.substring(0, 4) : base;
@@ -196,6 +247,34 @@ public class UserServiceImpl implements UserService {
             }
 
             userEntity.setTag(userDTO.tag().toUpperCase().trim());
+        }
+
+        return UserDTO.fromEntity(userEntity);
+    }
+
+    @Override
+    @Transactional
+    public UserDTO adminUpdateUser(Long id, UserAdminUpdateDTO userAdminUpdateDTO) {
+        UserEntity userEntity = Optional.ofNullable(userRepository.findById(id))
+            .orElseThrow(() -> new BusinessException(
+                Response.Status.NOT_FOUND,
+                "Utilisateur non trouvé : " + id
+            ));
+
+        if (userAdminUpdateDTO.name() != null && !userAdminUpdateDTO.name().isBlank()) {
+            userEntity.setName(userAdminUpdateDTO.name().trim());
+        }
+
+        if (userAdminUpdateDTO.role() != null && !userAdminUpdateDTO.role().isBlank()) {
+            userEntity.setRole(userAdminUpdateDTO.role());
+        }
+
+        if (userAdminUpdateDTO.contact() != null && !userAdminUpdateDTO.contact().isBlank()) {
+            userEntity.setContact(userAdminUpdateDTO.contact().trim());
+        }
+
+        if (userAdminUpdateDTO.active() != null) {
+            userEntity.setActive(userAdminUpdateDTO.active());
         }
 
         return UserDTO.fromEntity(userEntity);

@@ -11,7 +11,7 @@ public class TokenService {
         return Jwt.issuer("https://acme.org/issuer")
             .upn(email)
             .groups(Set.of(role))
-            .expiresIn(3600)
+            .expiresIn(3600000)
             .sign();
     }
 }
